@@ -66,7 +66,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     return box.values.any((list) => list.name == listName);
   }
 
-  // Function to add a new category
+  // Function to add a new list
   Future<void> _addCategory() async {
     var box = Hive.box<ShoppingList>('shopping_lists');
     showDialog(
@@ -94,7 +94,6 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                     items: [],
                   );
                   await box.add(newList);
-                  setState(() {});
                 }
                 Navigator.pop(context);
               },
@@ -106,18 +105,22 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     );
   }
 
-  // Function to update the category name
-  void _updateCategory(String oldCategoryName) {
-    final controller = TextEditingController(text: oldCategoryName);
+  // Function to update the list name
+  Future<void> _updateCategory(String oldListName) async {
+    final controller = TextEditingController(text: oldListName);
+    final box = await Hive.openBox<ShoppingList>('shopping_lists');
+    final listIndex = box.values.toList().indexWhere(
+      (item) => item.name == oldListName,
+    );
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Update Category'),
+          title: const Text('Update List'),
           content: TextField(
             controller: controller,
-            decoration: const InputDecoration(labelText: 'Category Name'),
+            decoration: const InputDecoration(labelText: 'List Name'),
           ),
           actions: [
             TextButton(
@@ -125,20 +128,23 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 if (controller.text.isNotEmpty) {
-                  setState(() {
-                    // Remove the old category and add the updated category
-                    List<ShoppingItem> items = categoryMap[oldCategoryName]!;
-                    categoryMap.remove(oldCategoryName);
-                    categoryMap[controller.text] = items;
-                  });
-                  Navigator.pop(context);
+                  if (!await checkIfListNameExists(controller.text)) {
+                    final itemToUpdate = box.getAt(listIndex);
+                    itemToUpdate?.name = controller.text;
+                    await itemToUpdate?.save();
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("List name is exist already"),
+                      ),
+                    );
+                  }
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Category name cannot be empty"),
-                    ),
+                    const SnackBar(content: Text("List name cannot be empty")),
                   );
                 }
               },
