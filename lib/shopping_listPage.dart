@@ -15,7 +15,13 @@ class ShoppingListPage extends StatefulWidget {
 }
 
 class _ShoppingListPageState extends State<ShoppingListPage> {
-  final Map<String, List<ShoppingItem>> categoryMap = {};
+
+
+
+  final Map<String, List<ShoppingItem>> categoryMap = {}; //******************************
+
+
+
 
   List<ShoppingList> lists = [];
   @override
@@ -26,7 +32,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
   // Getter methods to organize the data
   List<ShoppingItem> get allItems =>
-      categoryMap.entries
+      categoryMap.entries //******************************
           .where((e) => e.key != 'Completed')
           .expand((e) => e.value)
           .toList();
@@ -53,7 +59,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
           )
           .toList();
 
-  List<ShoppingItem> get completedItems => categoryMap['Completed'] ?? [];
+  List<ShoppingItem> get completedItems => categoryMap['Completed'] ?? [];//******************************
 
   // Helper function to compare dates
   bool isSameDate(DateTime a, DateTime b) {
@@ -138,7 +144,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("List name is exist already"),
+                        content: Text("List name exists already"),
                       ),
                     );
                   }
@@ -208,20 +214,15 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
   }
 
   // Function to go to the category page
-  Future<void> _goToCategoryPage(String category) async {
-    final updated = await Navigator.push<List<ShoppingItem>>(
+  Future<void> _goToCategoryPage(int index) async {
+    final updated = await Navigator.push(
       context,
       MaterialPageRoute(
         builder:
             (_) =>
-                CategoryPage(category: category, items: categoryMap[category]!),
+                CategoryPage(index: index),
       ),
     );
-    if (updated != null) {
-      setState(() {
-        categoryMap[category] = updated;
-      });
-    }
   }
 
   int get totalCount => allItems.length;
@@ -319,7 +320,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                             ),
                           ],
                         ),
-                        onTap: () => _goToCategoryPage(listName),
+                        onTap: () => _goToCategoryPage(idx),
                       );
                     },
                   );

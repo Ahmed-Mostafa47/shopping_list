@@ -1,26 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/shoppingList.dart';
 import 'package:flutter_application_1/shopping_item.dart';
+import 'package:hive/hive.dart';
 
 class CategoryPage extends StatefulWidget {
-  final String category;
-  final List<ShoppingItem> items;
 
-  const CategoryPage({super.key, required this.category, required this.items});
+int index;
+   CategoryPage({super.key, required this.index});
 
   @override
   State<CategoryPage> createState() => _CategoryPageState();
 }
 
 class _CategoryPageState extends State<CategoryPage> {
-  late List<ShoppingItem> items;
-
   @override
   void initState() {
     super.initState();
-    items = widget.items;
   }
 
   void _addItem() {
+    var box = Hive.box<ShoppingList>('shopping_lists');
     showDialog(
       context: context,
       builder: (context) {
@@ -85,8 +84,12 @@ class _CategoryPageState extends State<CategoryPage> {
                         isScheduled: isScheduled,
                         scheduledDate: selectedDate,
                       );
-                      setState(() => items.add(newItem));
-                      Navigator.pop(context, items);
+                      setState(() {
+                        ShoppingList updated = box.getAt(widget.index)!;
+                        updated.items.add(newItem);
+                        box.putAt(widget.index, updated);
+                      });
+                      Navigator.pop(context);
                     } else {
                       // If scheduled is selected but no date is picked, show a warning
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -106,10 +109,11 @@ class _CategoryPageState extends State<CategoryPage> {
     );
   }
 
-  void _updateItem(int index) {
-    final controller = TextEditingController(text: items[index].name);
-    bool isScheduled = items[index].isScheduled;
-    DateTime? selectedDate = items[index].scheduledDate;
+  void _updateItem(int i) {
+    var box = Hive.box<ShoppingList>('shopping_lists');
+    final controller = TextEditingController(text: box.getAt(widget.index)!.items[i].name);
+    bool isScheduled = box.getAt(widget.index)!.items[i].isScheduled;
+    DateTime? selectedDate = box.getAt(widget.index)!.items[i].scheduledDate;
 
     showDialog(
       context: context,
@@ -167,11 +171,19 @@ class _CategoryPageState extends State<CategoryPage> {
                       );
                     } else if (isScheduled && selectedDate != null) {
                       setState(() {
-                        items[index] = ShoppingItem(
+                        ShoppingList updated = box.getAt(widget.index)!;
+                        updated.items[i]=ShoppingItem(
                           name: controller.text,
                           isScheduled: isScheduled,
                           scheduledDate: selectedDate,
                         );
+                        box.putAt(widget.index, updated);
+
+                        // items[index] = ShoppingItem(
+                        //   name: controller.text,
+                        //   isScheduled: isScheduled,
+                        //   scheduledDate: selectedDate,
+                        // );
                       });
                       Navigator.pop(context);
                     } else {
@@ -193,14 +205,15 @@ class _CategoryPageState extends State<CategoryPage> {
     );
   }
 
-  void _deleteItem(int index) {
+  void _deleteItem(int i) {
+    var box = Hive.box<ShoppingList>('shopping_lists');
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Delete Item'),
           content: Text(
-            'Are you sure you want to delete "${items[index].name}"?',
+            'Are you sure you want to delete "${box.getAt(widget.index)!.items[i].name}"?',
           ),
           actions: [
             TextButton(
@@ -210,7 +223,9 @@ class _CategoryPageState extends State<CategoryPage> {
             TextButton(
               onPressed: () {
                 setState(() {
-                  items.removeAt(index);
+                  ShoppingList updated = box.getAt(widget.index)!;
+                  updated.items.removeAt(i);
+                  box.putAt(widget.index, updated);
                 });
                 Navigator.pop(context);
               },
@@ -224,12 +239,13 @@ class _CategoryPageState extends State<CategoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    var box = Hive.box<ShoppingList>('shopping_lists');
     return Scaffold(
-      appBar: AppBar(title: Text(widget.category)),
+      appBar: AppBar(title: Text(box.getAt(widget.index)!.name)),
       body: ListView.builder(
-        itemCount: items.length,
+        itemCount: box.getAt(widget.index)!.items.length,
         itemBuilder: (context, i) {
-          final item = items[i];
+          final item = box.getAt(widget.index)!.items[i];
           return ListTile(
             title: Text(item.name),
             subtitle:
