@@ -48,7 +48,9 @@ class _InfoListPageState extends State<InfoListPage> {
               value: isCompletedPage ? false : item.isCompleted,
               onChanged: (val) {
                 widget.onItemToggle(item, val ?? false);
-                setState(() {});
+                setState(() {
+                  items[i].isCompleted = val ?? false;
+                });
               },
             ),
           );

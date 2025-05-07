@@ -290,12 +290,16 @@ class _CategoryPageState extends State<CategoryPage> {
   @override
   Widget build(BuildContext context) {
     var box = Hive.box<ShoppingList>('shopping_lists');
+    final currentList = box.getAt(widget.index)!;
+    final nonCompletedItems =
+        currentList.items.where((item) => !item.isCompleted).toList();
+
     return Scaffold(
-      appBar: AppBar(title: Text(box.getAt(widget.index)!.name)),
+      appBar: AppBar(title: Text(currentList.name)),
       body: ListView.builder(
-        itemCount: box.getAt(widget.index)!.items.length,
+        itemCount: nonCompletedItems.length,
         itemBuilder: (context, i) {
-          final item = box.getAt(widget.index)!.items[i];
+          final item = nonCompletedItems[i];
           return ListTile(
             title: Text(item.name),
             subtitle:
@@ -319,23 +323,20 @@ class _CategoryPageState extends State<CategoryPage> {
                   value: item.isCompleted,
                   onChanged: (bool? value) {
                     setState(() {
-                      ShoppingList updated = box.getAt(widget.index)!;
-                      updated.items[i].isCompleted = value ?? false;
-                      box.putAt(widget.index, updated);
+                      item.isCompleted = value ?? false;
+                      currentList.save(); // Persist changes
+                      loadAndUpdateLists(); // Refresh UI
                     });
                   },
                 ),
               ],
             ),
-            onTap: () {
-              // You can add additional functionality here if needed.
-            },
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addItem,
-        child: const Icon(Icons.add),
+        child: Icon(Icons.add),
       ),
     );
   }

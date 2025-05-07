@@ -39,10 +39,10 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
     for (var list in allShoppingLists) {
       for (var item in list.items) {
-        allItems.add(item);
-
         if (item.isCompleted) {
           completedItems.add(item);
+        } else {
+          allItems.add(item);
         }
 
         if (item.scheduledDate != null) {
@@ -50,10 +50,13 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
           final scheduledDate = item.scheduledDate!;
           if (scheduledDate.year == now.year &&
               scheduledDate.month == now.month &&
-              scheduledDate.day == now.day) {
+              scheduledDate.day == now.day &&
+              !item.isCompleted) {
             todayItems.add(item);
           } else {
-            scheduledItems.add(item);
+            if (!item.isCompleted) {
+              scheduledItems.add(item);
+            }
           }
         }
       }
@@ -201,7 +204,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
   // Function to open a page displaying the items of a category
   Future<void> _openInfoPage(String title, List<ShoppingItem> items) async {
-    final box = await Hive.openBox<ShoppingList>('shopping_lists');
+    final box = Hive.box<ShoppingList>('shopping_lists');
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -211,6 +214,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
               items: items,
               onItemToggle: (item, value) async {
                 if (title == 'Completed') {
+                  // Handle deletion of completed items
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder:
@@ -230,22 +234,24 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                         ),
                   );
                   if (confirm == true) {
-                    // setState(() {
-                    //   categoryMap.forEach((key, list) => list.remove(item));
-                    // });
                     for (var list in box.values) {
                       list.items.removeWhere((i) => i.name == item.name);
                       await list.save();
                     }
+                    loadAndUpdateLists();
                   }
                 } else {
-                  if (value) {
-                    // categoryMap.forEach((key, list) => list.remove(item));
-                    // item.isCompleted = true;
-                    // categoryMap['Completed'] ??= [];
-                    // categoryMap['Completed']!.add(item);
-                    for (var list in box.values) {}
+                  // Update the item's completion status
+                  for (var list in box.values) {
+                    for (var i = 0; i < list.items.length; i++) {
+                      if (list.items[i].name == item.name) {
+                        list.items[i].isCompleted = value;
+                        await list.save();
+                        break;
+                      }
+                    }
                   }
+                  loadAndUpdateLists();
                 }
               },
             ),
