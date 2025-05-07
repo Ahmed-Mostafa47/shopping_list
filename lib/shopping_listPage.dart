@@ -353,6 +353,8 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                               ),
                               onPressed: () async {
                                 await box.delete(keys[idx]);
+                                loadAndUpdateLists();
+                                setState(() {});
                               },
                             ),
                           ],
