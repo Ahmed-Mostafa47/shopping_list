@@ -4,18 +4,62 @@ import 'package:flutter_application_1/shopping_item.dart';
 import 'package:hive/hive.dart';
 
 class CategoryPage extends StatefulWidget {
-
-int index;
-   CategoryPage({super.key, required this.index});
+  int index;
+  CategoryPage({super.key, required this.index});
 
   @override
   State<CategoryPage> createState() => _CategoryPageState();
 }
 
 class _CategoryPageState extends State<CategoryPage> {
+  var allLists;
+
   @override
   void initState() {
     super.initState();
+    allLists = Hive.box<ShoppingList>('shopping_lists').values.toList();
+    loadAndUpdateLists();
+  }
+
+  List<ShoppingItem> todayItems = [];
+  List<ShoppingItem> completedItems = [];
+  List<ShoppingItem> scheduledItems = [];
+  List<ShoppingItem> allItems = [];
+
+  void updateMainLists(List<ShoppingList> allShoppingLists) {
+    todayItems.clear();
+    completedItems.clear();
+    scheduledItems.clear();
+    allItems.clear();
+
+    for (var list in allShoppingLists) {
+      for (var item in list.items) {
+        allItems.add(item);
+
+        if (item.isCompleted) {
+          completedItems.add(item);
+        }
+
+        if (item.scheduledDate != null) {
+          final now = DateTime.now();
+          final scheduledDate = item.scheduledDate!;
+          if (scheduledDate.year == now.year &&
+              scheduledDate.month == now.month &&
+              scheduledDate.day == now.day) {
+            todayItems.add(item);
+          } else {
+            scheduledItems.add(item);
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> loadAndUpdateLists() async {
+    final box = Hive.box<ShoppingList>('shopping_lists');
+    final allShoppingLists = box.values.toList();
+    updateMainLists(allShoppingLists);
+    setState(() {});
   }
 
   void _addItem() {
@@ -38,13 +82,14 @@ class _CategoryPageState extends State<CategoryPage> {
                     controller: controller,
                     decoration: const InputDecoration(labelText: 'Item Name'),
                   ),
-                  CheckboxListTile(
-                    title: const Text('Scheduled'),
-                    value: isScheduled,
-                    onChanged:
-                        (v) => setStateDialog(() => isScheduled = v ?? false),
-                  ),
-                  if (isScheduled)
+                  // CheckboxListTile(
+                  //   title: const Text('Scheduled'),
+                  //   value: isScheduled,
+                  //   onChanged:
+                  //       (v) => setStateDialog(() => isScheduled = v ?? false),
+                  // ),
+                  SizedBox(height: 10),
+                  if (true)
                     TextButton(
                       onPressed: () async {
                         final d = await showDatePicker(
@@ -78,7 +123,7 @@ class _CategoryPageState extends State<CategoryPage> {
                           content: Text("Item name cannot be empty"),
                         ),
                       );
-                    } else if (isScheduled && selectedDate != null) {
+                    } else if (true && selectedDate != null) {
                       final newItem = ShoppingItem(
                         name: controller.text,
                         isScheduled: isScheduled,
@@ -88,6 +133,7 @@ class _CategoryPageState extends State<CategoryPage> {
                         ShoppingList updated = box.getAt(widget.index)!;
                         updated.items.add(newItem);
                         box.putAt(widget.index, updated);
+                        loadAndUpdateLists();
                       });
                       Navigator.pop(context);
                     } else {
@@ -111,7 +157,9 @@ class _CategoryPageState extends State<CategoryPage> {
 
   void _updateItem(int i) {
     var box = Hive.box<ShoppingList>('shopping_lists');
-    final controller = TextEditingController(text: box.getAt(widget.index)!.items[i].name);
+    final controller = TextEditingController(
+      text: box.getAt(widget.index)!.items[i].name,
+    );
     bool isScheduled = box.getAt(widget.index)!.items[i].isScheduled;
     DateTime? selectedDate = box.getAt(widget.index)!.items[i].scheduledDate;
 
@@ -135,7 +183,7 @@ class _CategoryPageState extends State<CategoryPage> {
                     onChanged:
                         (v) => setStateDialog(() => isScheduled = v ?? false),
                   ),
-                  if (isScheduled)
+                  if (true)
                     TextButton(
                       onPressed: () async {
                         final d = await showDatePicker(
@@ -172,12 +220,13 @@ class _CategoryPageState extends State<CategoryPage> {
                     } else if (isScheduled && selectedDate != null) {
                       setState(() {
                         ShoppingList updated = box.getAt(widget.index)!;
-                        updated.items[i]=ShoppingItem(
+                        updated.items[i] = ShoppingItem(
                           name: controller.text,
                           isScheduled: isScheduled,
                           scheduledDate: selectedDate,
                         );
                         box.putAt(widget.index, updated);
+                        loadAndUpdateLists();
 
                         // items[index] = ShoppingItem(
                         //   name: controller.text,
@@ -226,6 +275,7 @@ class _CategoryPageState extends State<CategoryPage> {
                   ShoppingList updated = box.getAt(widget.index)!;
                   updated.items.removeAt(i);
                   box.putAt(widget.index, updated);
+                  loadAndUpdateLists();
                 });
                 Navigator.pop(context);
               },
@@ -269,7 +319,9 @@ class _CategoryPageState extends State<CategoryPage> {
                   value: item.isCompleted,
                   onChanged: (bool? value) {
                     setState(() {
-                      item.isCompleted = value ?? false;
+                      ShoppingList updated = box.getAt(widget.index)!;
+                      updated.items[i].isCompleted = value ?? false;
+                      box.putAt(widget.index, updated);
                     });
                   },
                 ),

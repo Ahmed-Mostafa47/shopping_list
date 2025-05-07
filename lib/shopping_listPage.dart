@@ -15,51 +15,90 @@ class ShoppingListPage extends StatefulWidget {
 }
 
 class _ShoppingListPageState extends State<ShoppingListPage> {
-
-
-
-  final Map<String, List<ShoppingItem>> categoryMap = {}; //******************************
-
-
-
+  final Map<String, List<ShoppingItem>> categoryMap =
+      {}; //******************************
 
   List<ShoppingList> lists = [];
   @override
   void initState() {
     super.initState();
     lists = Hive.box<ShoppingList>('shopping_lists').values.toList();
+    loadAndUpdateLists();
   }
 
-  // Getter methods to organize the data
-  List<ShoppingItem> get allItems =>
-      categoryMap.entries //******************************
-          .where((e) => e.key != 'Completed')
-          .expand((e) => e.value)
-          .toList();
+  List<ShoppingItem> todayItems = [];
+  List<ShoppingItem> completedItems = [];
+  List<ShoppingItem> scheduledItems = [];
+  List<ShoppingItem> allItems = [];
 
-  List<ShoppingItem> get todayItems =>
-      allItems
-          .where(
-            (i) =>
-                (i.isToday ||
-                    (i.scheduledDate != null &&
-                        isSameDate(i.scheduledDate!, DateTime.now()))) &&
-                !i.isCompleted,
-          )
-          .toList();
+  void updateMainLists(List<ShoppingList> allShoppingLists) {
+    todayItems.clear();
+    completedItems.clear();
+    scheduledItems.clear();
+    allItems.clear();
 
-  List<ShoppingItem> get scheduledItems =>
-      allItems
-          .where(
-            (i) =>
-                i.isScheduled &&
-                !i.isCompleted &&
-                !(i.scheduledDate != null &&
-                    isSameDate(i.scheduledDate!, DateTime.now())),
-          )
-          .toList();
+    for (var list in allShoppingLists) {
+      for (var item in list.items) {
+        allItems.add(item);
 
-  List<ShoppingItem> get completedItems => categoryMap['Completed'] ?? [];//******************************
+        if (item.isCompleted) {
+          completedItems.add(item);
+        }
+
+        if (item.scheduledDate != null) {
+          final now = DateTime.now();
+          final scheduledDate = item.scheduledDate!;
+          if (scheduledDate.year == now.year &&
+              scheduledDate.month == now.month &&
+              scheduledDate.day == now.day) {
+            todayItems.add(item);
+          } else {
+            scheduledItems.add(item);
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> loadAndUpdateLists() async {
+    final box = Hive.box<ShoppingList>('shopping_lists');
+    final allShoppingLists = box.values.toList();
+    updateMainLists(allShoppingLists);
+    setState(() {});
+  }
+
+  // // Getter methods to organize the data
+  // List<ShoppingItem> get allItems =>
+  //     categoryMap
+  //         .entries //******************************
+  //         .where((e) => e.key != 'Completed')
+  //         .expand((e) => e.value)
+  //         .toList();
+
+  // List<ShoppingItem> get todayItems =>
+  //     allItems
+  //         .where(
+  //           (i) =>
+  //               (i.isToday ||
+  //                   (i.scheduledDate != null &&
+  //                       isSameDate(i.scheduledDate!, DateTime.now()))) &&
+  //               !i.isCompleted,
+  //         )
+  //         .toList();
+
+  // List<ShoppingItem> get scheduledItems =>
+  //     allItems
+  //         .where(
+  //           (i) =>
+  //               i.isScheduled &&
+  //               !i.isCompleted &&
+  //               !(i.scheduledDate != null &&
+  //                   isSameDate(i.scheduledDate!, DateTime.now())),
+  //         )
+  //         .toList();
+
+  // List<ShoppingItem> get completedItems =>
+  //     categoryMap['Completed'] ?? []; //******************************
 
   // Helper function to compare dates
   bool isSameDate(DateTime a, DateTime b) {
@@ -143,9 +182,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                     Navigator.pop(context);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("List name exists already"),
-                      ),
+                      const SnackBar(content: Text("List name exists already")),
                     );
                   }
                 } else {
@@ -164,6 +201,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
   // Function to open a page displaying the items of a category
   Future<void> _openInfoPage(String title, List<ShoppingItem> items) async {
+    final box = await Hive.openBox<ShoppingList>('shopping_lists');
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -192,37 +230,36 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                         ),
                   );
                   if (confirm == true) {
-                    setState(() {
-                      categoryMap.forEach((key, list) => list.remove(item));
-                    });
+                    // setState(() {
+                    //   categoryMap.forEach((key, list) => list.remove(item));
+                    // });
+                    for (var list in box.values) {
+                      list.items.removeWhere((i) => i.name == item.name);
+                      await list.save();
+                    }
                   }
                 } else {
-                  setState(() {
-                    if (value) {
-                      categoryMap.forEach((key, list) => list.remove(item));
-                      item.isCompleted = true;
-                      categoryMap['Completed'] ??= [];
-                      categoryMap['Completed']!.add(item);
-                    }
-                  });
+                  if (value) {
+                    // categoryMap.forEach((key, list) => list.remove(item));
+                    // item.isCompleted = true;
+                    // categoryMap['Completed'] ??= [];
+                    // categoryMap['Completed']!.add(item);
+                    for (var list in box.values) {}
+                  }
                 }
               },
             ),
       ),
     );
-    setState(() {});
   }
 
   // Function to go to the category page
   Future<void> _goToCategoryPage(int index) async {
     final updated = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder:
-            (_) =>
-                CategoryPage(index: index),
-      ),
+      MaterialPageRoute(builder: (_) => CategoryPage(index: index)),
     );
+    loadAndUpdateLists();
   }
 
   int get totalCount => allItems.length;
@@ -320,7 +357,9 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                             ),
                           ],
                         ),
-                        onTap: () => _goToCategoryPage(idx),
+                        onTap: () {
+                          _goToCategoryPage(idx);
+                        },
                       );
                     },
                   );
