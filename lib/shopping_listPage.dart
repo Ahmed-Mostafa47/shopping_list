@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/category_page.dart';
 import 'package:flutter_application_1/info_card.dart';
 import 'package:flutter_application_1/infolist_page.dart';
+import 'package:flutter_application_1/shoppingList.dart';
 import 'package:flutter_application_1/shopping_item.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/adapters.dart';
 
 class ShoppingListPage extends StatefulWidget {
   const ShoppingListPage({super.key});
@@ -13,6 +16,13 @@ class ShoppingListPage extends StatefulWidget {
 
 class _ShoppingListPageState extends State<ShoppingListPage> {
   final Map<String, List<ShoppingItem>> categoryMap = {};
+
+  List<ShoppingList> lists = [];
+  @override
+  void initState() {
+    super.initState();
+    lists = Hive.box<ShoppingList>('shopping_lists').values.toList();
+  }
 
   // Getter methods to organize the data
   List<ShoppingItem> get allItems =>
@@ -50,8 +60,15 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
+  Future<bool> checkIfListNameExists(String listName) async {
+    var box = Hive.box<ShoppingList>('shopping_lists');
+
+    return box.values.any((list) => list.name == listName);
+  }
+
   // Function to add a new category
-  void _addCategory() {
+  Future<void> _addCategory() async {
+    var box = Hive.box<ShoppingList>('shopping_lists');
     showDialog(
       context: context,
       builder: (context) {
@@ -60,7 +77,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
           title: const Text('Add List'),
           content: TextField(
             controller: controller,
-            decoration: const InputDecoration(labelText: 'List Name'),
+            decoration: InputDecoration(labelText: 'List Name'),
           ),
           actions: [
             TextButton(
@@ -68,12 +85,16 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                if (controller.text.isNotEmpty &&
-                    !categoryMap.containsKey(controller.text)) {
-                  setState(() {
-                    categoryMap[controller.text] = [];
-                  });
+              onPressed: () async {
+                String listName = controller.text.trim();
+                if (listName.isNotEmpty &&
+                    !await checkIfListNameExists(listName)) {
+                  final newList = ShoppingList(
+                    name: controller.text,
+                    items: [],
+                  );
+                  await box.add(newList);
+                  setState(() {});
                 }
                 Navigator.pop(context);
               },
@@ -253,36 +274,48 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
             ),
             const SizedBox(height: 20),
             Expanded(
-              child: ListView.builder(
-                itemCount:
-                    categoryMap.keys.where((k) => k != 'Completed').length,
-                itemBuilder: (context, idx) {
-                  final filteredKeys =
-                      categoryMap.keys.where((k) => k != 'Completed').toList();
-                  final category = filteredKeys[idx];
-                  final items = categoryMap[category]!;
-                  return ListTile(
-                    title: Text(category),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('${items.length}'),
-                        const SizedBox(width: 10),
+              child: ValueListenableBuilder(
+                valueListenable:
+                    Hive.box<ShoppingList>('shopping_lists').listenable(),
+                builder: (context, Box<ShoppingList> box, _) {
+                  lists = box.values.toList();
+                  final keys = box.keys.toList();
+                  return ListView.builder(
+                    itemCount: lists.length,
+                    itemBuilder: (context, idx) {
+                      final filteredKeys =
+                          categoryMap.keys
+                              .where((k) => k != 'Completed')
+                              .toList();
+                      final listName = lists[idx].name;
+                      final items = lists[idx].items;
+                      return ListTile(
+                        title: Text(listName),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${items.length}'),
+                            const SizedBox(width: 10),
 
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => _updateCategory(category),
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () => _updateCategory(listName),
+                            ),
+                            const SizedBox(width: 10),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Color.fromARGB(255, 222, 60, 60),
+                              ),
+                              onPressed: () async {
+                                await box.delete(keys[idx]);
+                              },
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed:
-                              () =>
-                                  setState(() => categoryMap.remove(category)),
-                        ),
-                      ],
-                    ),
-                    onTap: () => _goToCategoryPage(category),
+                        onTap: () => _goToCategoryPage(listName),
+                      );
+                    },
                   );
                 },
               ),

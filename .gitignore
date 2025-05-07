@@ -1,0 +1,37 @@
+# Flutter/Dart related files
+**/bin/*
+**/build/*
+**/.dart_tool/
+**/.packages
+.pub/
+.idea/
+.vscode/
+
+# Android Studio/IntelliJ related
+.android/
+.idea/
+*.iml
+
+# VS Code related
+.vscode/
+
+# Flutter-specific files
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# iOS related
+ios/Flutter/.last_build_id
+ios/.generated/
+
+# macOS related
+macos/Flutter/ephemeral/
+
+# Other system-specific files
+.DS_Store
+Thumbs.db
+
+# User-specific files
+*.log
+*.sublime-workspace
+*.sublime-project

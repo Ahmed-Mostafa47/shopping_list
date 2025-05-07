@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/shoppingList.dart';
 import 'package:flutter_application_1/shopping_item.dart';
 import 'package:flutter_application_1/shopping_listPage.dart';
 import 'package:hive_flutter/adapters.dart';
@@ -8,8 +9,8 @@ void main() async {
 
   await Hive.initFlutter();
   Hive.registerAdapter(ShoppingItemAdapter());
-  Hive.registerAdapter(ShoppingItemAdapter());
-  await Hive.openBox<ShoppingItem>('shopping_items');
+  Hive.registerAdapter(ShoppingListAdapter());
+  await Hive.openBox<ShoppingList>('shopping_lists');
 
   runApp(const MyApp());
 }
